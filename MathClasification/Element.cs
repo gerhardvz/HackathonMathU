@@ -7,38 +7,40 @@ public class Element
    protected Boolean _canSwap;
    protected object _value;
    
-   protected Element(object value,Element[] elements)
+   
+   protected Element(object value, Boolean swappable,Element[] elements)
    {
       this._value = value;
       this._elements = elements;
+      this._canSwap = swappable;
    }
 
     static Element parseMathML(IEnumerable<XmlNode> mathML)
     {
-   
+       var OrderofCalculation = new List<String>(){"=", "+", "-", "/", "*"};
        //Search for the position of the '=' in the calculation - should be on top level
        //Only happens once except if there is an error
-       int nodePos=0;
-       foreach (XmlNode node in mathML)
+       int nodePos;
+       foreach (var order in OrderofCalculation)
        {
-          if (node.Name == "mo" && node.Value=="=")
+           nodePos=0;
+          foreach (XmlNode node in mathML)
           {
-             //ToDo: Callback Function
+             if (node.Name == "mo" && node.Value==order)
+             {
+                //Split equation into two parts,
+                //Left hand side
+                IEnumerable<XmlNode> left = mathML.Take(nodePos);
+                //Right hand side
+                IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
              
-             
-             //Split equation into two parts,
-             //Left hand side
-             IEnumerable<XmlNode> left = mathML.Take(nodePos);
-             //Right hand side
-             IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
-
-             var leftElement = parseMathML(left);
-             var rightElement = parseMathML(right);
-             return new Element("=", new[] {leftElement, rightElement});
-          }
+                return new Element("=", false,new[] {parseMathML(left), parseMathML(right)});
+             }
    
-          nodePos++;
+             nodePos++;
+          }
        }
+      
        // look at <mo> and split into left and right
         nodePos=0;
        foreach (XmlNode node in mathML)
@@ -168,6 +170,131 @@ public class Element
 
       return true;
    }
+
    
+   static private Element checkSquarroot(IEnumerable<XmlNode> mathML)
+   {
+      var elementList = SplitOnElementType(mathML, "msqrt");
+      if (elementList==null)
+      {
+         return  null;
+      }
+      
+      return  new Element("sqrt", true,elementList);;
+   }
+   static private Element checkPower(IEnumerable<XmlNode> mathML)
+   {
+      var elementList = SplitOnElementType(mathML, "msup");
+      if (elementList==null)
+      {
+         return  null;
+      }
+      
+      return  new Element("power", true,elementList);;
+   }
    
+   static private Element checkMultiplication(IEnumerable<XmlNode> mathML)
+   {
+      var elementList = SplitOnElementType(mathML, "mo", "x");
+      if (elementList==null)
+      {
+         return  null;
+      }
+      
+      return  new Element("x", true,elementList);;
+   }
+   static private Element checkDivision(IEnumerable<XmlNode> mathML)
+   {
+      var elementList = SplitOnElementType(mathML, "mo", "/");
+      if (elementList!=null)
+      {
+         return  new Element("/", false,elementList);
+      }
+   
+      //TODO:Split on frac
+      
+      return  new Element("/", false,elementList);;
+   }
+   
+   static private Element checkAddition(IEnumerable<XmlNode> mathML)
+   {
+      var elementList = SplitOnElementType(mathML, "mo", "+");
+      if (elementList != null)
+      {
+         return new Element("+", true, elementList);
+      }
+
+      return  null;
+   }
+   
+   static private Element checkSubtraction(IEnumerable<XmlNode> mathML)
+   {
+      var elementList = SplitOnElementType(mathML, "mo", "-");
+      if (elementList == null)
+      {
+         return null;
+      }
+
+      if (elementList.Count() == 1)
+      {
+         //Then this mo element acts as a negative indicator
+         //TODO: Implement negative indicator
+         // return element as a negative value
+         return new Element("-", false, elementList);
+      }
+
+      return new Element("-", false, elementList);
+   }
+   
+   static private Element[] SplitOnElementType(IEnumerable<XmlNode> mathML,string elementName, string elementValue)
+   {
+      int nodePos=0;
+      foreach (XmlNode node in mathML)
+      {
+         if (node.Name == elementName && node.Value==elementValue)
+         {
+            //Split equation into two parts,
+            //Left hand side
+            IEnumerable<XmlNode> left = mathML.Take(nodePos);
+            //Right hand side
+            IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
+            if (left.Count()==0)
+            {
+               return new [] { parseMathML(right)};
+            }
+            return new [] {parseMathML(left), parseMathML(right)};
+         }
+   
+         nodePos++;
+      }
+      //if the Element with name and value not found return null
+      return null
+      ;
+   }
+   
+   static private Element[] SplitOnElementType(IEnumerable<XmlNode> mathML,string elementName)
+   {
+      int nodePos=0;
+      foreach (XmlNode node in mathML)
+      {
+         if (node.Name == elementName)
+         {
+            //Split equation into two parts,
+            //Left hand side
+            IEnumerable<XmlNode> left = mathML.Take(nodePos);
+            
+            //Right hand side
+            IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
+            if (left.Count()==0)
+            {
+               return new [] { parseMathML(right)};
+            }
+            return new [] {parseMathML(left), parseMathML(right)};
+         }
+   
+         nodePos++;
+      }
+      //if the Element with name and value not found return null
+      return null;
+   }
 }
