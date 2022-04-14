@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathClasification", "MathClasification\MathClasification.csproj", "{5CBF5D77-3035-4B00-AA99-C8D782FA1EE4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MathClasificationTest", "MathClasificationTest\MathClasificationTest.csproj", "{926C879D-583E-45F1-AEC1-C2F42B00AFA7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5CBF5D77-3035-4B00-AA99-C8D782FA1EE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CBF5D77-3035-4B00-AA99-C8D782FA1EE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CBF5D77-3035-4B00-AA99-C8D782FA1EE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CBF5D77-3035-4B00-AA99-C8D782FA1EE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{926C879D-583E-45F1-AEC1-C2F42B00AFA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{926C879D-583E-45F1-AEC1-C2F42B00AFA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{926C879D-583E-45F1-AEC1-C2F42B00AFA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{926C879D-583E-45F1-AEC1-C2F42B00AFA7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
