@@ -4,7 +4,7 @@ namespace MathClasification;
 
 public class Number : Element
 {
-    Number(string value):base(value.Clone(), null)
+    public Number(string value):base(value.Clone(), false,null)
     {
         
     }

@@ -17,144 +17,146 @@ public class Element
 
     static Element parseMathML(IEnumerable<XmlNode> mathML)
     {
-       var OrderofCalculation = new List<String>(){"=", "+", "-", "/", "*"};
+       var OrderofCalculation = new Dictionary<String,Boolean>(){{"=",true}, {"+",true}, {"-",false}, {"/",false}, {"*",true}};
+       var MathFunctions = new List<Func<IEnumerable<XmlNode> , Element>>() { 
+          checkAddition,
+          checkSubtraction,
+          checkDivision,
+          checkMultiplication
+          
+       };
        //Search for the position of the '=' in the calculation - should be on top level
        //Only happens once except if there is an error
        int nodePos;
-       foreach (var order in OrderofCalculation)
+       foreach (var order in MathFunctions)
        {
-           nodePos=0;
-          foreach (XmlNode node in mathML)
+          var elm = order(mathML);
+          if ( elm is not null)
           {
-             if (node.Name == "mo" && node.Value==order)
-             {
-                //Split equation into two parts,
-                //Left hand side
-                IEnumerable<XmlNode> left = mathML.Take(nodePos);
-                //Right hand side
-                IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
-             
-                return new Element("=", false,new[] {parseMathML(left), parseMathML(right)});
-             }
-   
-             nodePos++;
+             return elm;
           }
-       }
-      
-       // look at <mo> and split into left and right
-        nodePos=0;
-       foreach (XmlNode node in mathML)
-       {
-          if (node.Name == "mo")
-          {
-             string value = node.Value;
-             //ToDo: Check if value is '-' and if there is a value left and right
-             
-             
-             //Split equation into two parts,
-             //Left hand side
-             IEnumerable<XmlNode> left = mathML.Take(nodePos);
-             //Right hand side
-             IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
 
-             var leftElement = parseMathML(left);
-             var rightElement = parseMathML(right);
-             return new Element(value, new[] {leftElement, rightElement});
-          }
-   
-          nodePos++;
-       }
-       
-       //Test for fractions
-       //Must contain two node trees
-       nodePos=0;
-       foreach (XmlNode node in mathML)
-       {
-          if (node.Name == "mfrac" )
-          {
-             //First Child (top)
-             IEnumerable<XmlNode> left = mathML.Take(nodePos);
-             //Second Child (Bottom)
-             IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
-
-             var leftElement = parseMathML(left);
-             var rightElement = parseMathML(right);
-             return new Element(value, new[] {leftElement, rightElement});
-          }
-   
-          nodePos++;
-       }
-       
-       
-       
-
-       
-       
-       //Test if fragment has Child node, if not it is not the following functions (mrow,mfrac.ec)
-       if (!mathML.HasChildNodes)
-       {
           
        }
-   
-       XmlNode childNode = mathML.FirstChild;
-       while (childNode !=mathML.LastChild)
-       {
-          if (childNode.HasChildNodes)
-          {
-             Element treeElements = Element.parseMathML(childNode);
-          }
-       }
+      //
+      // if code reaches this stage there was invalid mathml
+      throw new Exception("MathML doc was read and format was incorrect.");
+       // look at <mo> and split into left and right
+       //  nodePos=0;
+       // foreach (XmlNode node in mathML)
+       // {
+       //    if (node.Name == "mo")
+       //    {
+       //       string value = node.Value;
+       //       //ToDo: Check if value is '-' and if there is a value left and right
+       //       
+       //       
+       //       //Split equation into two parts,
+       //       //Left hand side
+       //       IEnumerable<XmlNode> left = mathML.Take(nodePos);
+       //       //Right hand side
+       //       IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
        //
-       
-       return new Element();
+       //       var leftElement = parseMathML(left);
+       //       var rightElement = parseMathML(right);
+       //       return new Element(value, new[] {leftElement, rightElement});
+       //    }
+       //
+       //    nodePos++;
+       // }
+       //
+       // //Test for fractions
+       // //Must contain two node trees
+       // nodePos=0;
+       // foreach (XmlNode node in mathML)
+       // {
+       //    if (node.Name == "mfrac" )
+       //    {
+       //       //First Child (top)
+       //       IEnumerable<XmlNode> left = mathML.Take(nodePos);
+       //       //Second Child (Bottom)
+       //       IEnumerable<XmlNode> right = mathML.Skip(nodePos+1);
+       //
+       //       var leftElement = parseMathML(left);
+       //       var rightElement = parseMathML(right);
+       //       return new Element(value, new[] {leftElement, rightElement});
+       //    }
+       //
+       //    nodePos++;
+       // }
+       //
+       //
+       //
+       //
+       //
+       //
+       // //Test if fragment has Child node, if not it is not the following functions (mrow,mfrac.ec)
+       // if (!mathML.HasChildNodes)
+       // {
+       //    
+       // }
+       //
+       // XmlNode childNode = mathML.FirstChild;
+       // while (childNode !=mathML.LastChild)
+       // {
+       //    if (childNode.HasChildNodes)
+       //    {
+       //       Element treeElements = Element.parseMathML(childNode);
+       //    }
+       // }
+       // //
+       //
+       // return new Element();
     }
 
-    static private Element parseFraction(XmlNode fracNode)
-    {
-       if (fracNode.ChildNodes.Count != 2)
-       {
-          throw new Exception("Invalid Fraction node given");
-       }
-   
-       int count = 0;
-       Element[] elements = new Element[2];
-       foreach (XmlNode nodeChild in fracNode.ChildNodes)
-       {
-          Element element;
-          if (isContained(nodeChild))
-          {
-             element = parseMathML(nodeChild);
-          }
-          else
-          {
-             if (nodeChild.Name=="mo")
-             {
-                throw new Exception("Invalid Expression, cant have an operator at this position");
-             }
-             if (nodeChild.Name=="mtext")
-             {
-                throw new Exception("Invalid Expression, cant have an text at this position");
-             }
-             if (nodeChild.Name=="mn")
-             {
-                Number number = new Number(nodeChild.Value);
-             }
-             
-          }
-   
-   
-          elements[count++] = element;
-       }
-    }
+    // static private Element parseFraction(XmlNode fracNode)
+    // {
+    //    if (fracNode.ChildNodes.Count != 2)
+    //    {
+    //       throw new Exception("Invalid Fraction node given");
+    //    }
+    //
+    //    int count = 0;
+    //    Element[] elements = new Element[2];
+    //    foreach (XmlNode nodeChild in fracNode.ChildNodes)
+    //    {
+    //       Element element;
+    //       if (isContained(nodeChild))
+    //       {
+    //          element = parseMathML(nodeChild);
+    //       }
+    //       else
+    //       {
+    //          if (nodeChild.Name=="mo")
+    //          {
+    //             throw new Exception("Invalid Expression, cant have an operator at this position");
+    //          }
+    //          if (nodeChild.Name=="mtext")
+    //          {
+    //             throw new Exception("Invalid Expression, cant have an text at this position");
+    //          }
+    //          if (nodeChild.Name=="mn")
+    //          {
+    //             Number number = new Number(nodeChild.Value);
+    //          }
+    //          
+    //       }
+    //
+    //
+    //       elements[count++] = element;
+    //    }
+    // }
 
    // Todo: Method that returns an number or identifier
+   static private Element checkNumber(XmlNode node)
+   {
+      if (node.Name == "mn")
+      {
+         return new Number(node.Value);
+      }
 
-
-    static private Element parseOperator(XmlDocument node)
-    {
-       var nodeList = node.GetElementsByTagName("mo");
-       
-    }
+      throw new Exception("Not a valid number.");
+   }
    
    //isContained returns false if the element type is one of the folowing {mi,mo,mn,mtext}
    static private bool isContained(XmlNode element)
@@ -170,7 +172,17 @@ public class Element
 
       return true;
    }
-
+   
+   static private Element? checkEquals(IEnumerable<XmlNode> mathML)
+   {
+      var elementList = SplitOnElementType(mathML, "mo", "=");
+      if (elementList == null)
+      {
+         return  null;
+      }
+      
+      return  new Element("=", true,elementList);;
+   }
    
    static private Element checkSquarroot(IEnumerable<XmlNode> mathML)
    {
@@ -246,7 +258,7 @@ public class Element
       return new Element("-", false, elementList);
    }
    
-   static private Element[] SplitOnElementType(IEnumerable<XmlNode> mathML,string elementName, string elementValue)
+   static private Element[]? SplitOnElementType(IEnumerable<XmlNode> mathML,string elementName, string elementValue)
    {
       int nodePos=0;
       foreach (XmlNode node in mathML)
@@ -272,7 +284,7 @@ public class Element
       ;
    }
    
-   static private Element[] SplitOnElementType(IEnumerable<XmlNode> mathML,string elementName)
+   static private Element[]? SplitOnElementType(IEnumerable<XmlNode> mathML,string elementName)
    {
       int nodePos=0;
       foreach (XmlNode node in mathML)
