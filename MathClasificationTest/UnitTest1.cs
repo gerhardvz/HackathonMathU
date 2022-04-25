@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Xml;
 using System.Xml.Linq;
@@ -7,6 +8,7 @@ using System.Xml.Schema;
 using System.Xml.Xsl;
 using NUnit.Framework;
 using MathClasification;
+
 
 namespace MathClasificationTest;
 
@@ -19,7 +21,7 @@ public class Tests
     }
 
     [Test]
-    public void Test1()
+    public void ParseFromXMLDocument()
     {
         XmlUrlResolver resolver = new XmlUrlResolver();
         resolver.Credentials = CredentialCache.DefaultCredentials;
@@ -39,7 +41,21 @@ public class Tests
                 XmlDocument xmldoc = new XmlDocument();
                 xmldoc.Load(reader);
                 // XmlNode? node = xmldoc.ReadNode(reader);
-                Console.WriteLine(xmldoc.InnerXml);
+                var parent = xmldoc.ChildNodes;
+                Console.WriteLine(parent.Count);
+
+                var parent2 = parent.Item(0).Cast<XmlNode>();
+                Console.WriteLine(parent2);
+                foreach (var ty in parent2)
+                {
+                    var children = ty.ChildNodes;
+                    Console.WriteLine(children.Count);
+                    foreach (XmlNode child in children)
+                    {
+                        
+                        Console.WriteLine(child.Name);
+                    }
+                }
             }
            
 
@@ -54,6 +70,25 @@ public class Tests
         // doc.Load("MathTest1.ml");
         // SimilarityIndex si = new SimilarityIndex(doc);
         Assert.IsTrue(true);
+        Assert.Pass();
+    }
+    
+    [Test]
+    public void ParseFromXMLFile()
+    {
+        try
+        {
+            var elements = MathClasification.Element.parseMathMLFile("MathTest1.ml");
+            foreach (var element in elements)
+            {
+                Console.WriteLine(element.ToString());
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            Assert.Fail();
+        }
         Assert.Pass();
     }
     private static void ValidationCallBack(object sender, ValidationEventArgs e) {
