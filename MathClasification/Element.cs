@@ -124,7 +124,7 @@ public class Element
             
             if (elm is not null)
             {
-                debugPrint(elm.ToString());
+                // debugPrint(elm.ToString());
                 return elm;
             }
         }
@@ -258,10 +258,11 @@ public class Element
 
     static private Element? checkMultiplication(IEnumerable<XmlNode> mathML)
     {
-        string[] Symbols = new[] {"x", "*","⁢",""};
+        string[] Symbols = new[] {"x", "*","\u2062",""};
         Element[] elementList;
         foreach (var symbol in Symbols)
         {
+            debugPrint("Testing symbol \""+symbol+"\"");
             if ((elementList = SplitOnElementType(mathML, "mo", symbol)) != null)
             {
                 return new Element("x", true, elementList);
@@ -284,7 +285,7 @@ public class Element
                     //Test if right first item == sibling
                     if (right.First()==nextSibling)
                     {
-                        debugPrint("They are sibling");
+                        // debugPrint("They are sibling");
                         return new Element("x", true, new []{parseMathML(left),parseMathML(right)});
                     }
                     //Consecutive Elements
@@ -314,10 +315,10 @@ public class Element
         //Element can only have 2 child elements in it
         if (nodes != null &&  nodes.Count == 2)
         {
-            debugPrint("Test mfrac");
+            
             var left = nodes[0];
             var right = nodes[1];
-            debugPrint("Meth");
+            
             debugPrint(left.Name);
             debugPrint(right.Name);
             if (left != null || right != null)
@@ -378,6 +379,8 @@ public class Element
                 //TODO Dont use casting
                 return parseMathML(node.ChildNodes.Cast<XmlNode>());
             }
+            
+            //TODO: Implement looking for brackets
             // if ((elementList = SplitOnElementType(mathML, "mo", "("))!= null)
             // {
             //    return  new Element("/", true,elementList); 
@@ -402,7 +405,7 @@ public class Element
                 {
                     return null;
                 }
-                debugPrint("Subtracted");
+                
                 return new Element("−", false, elementList);
                 
             } 
@@ -433,9 +436,14 @@ public class Element
         int nodePos = 0;
         foreach (XmlNode node in mathML)
         {
+            //Must Check operators that it only has 1 character inner text - possible problems is "&it" : Invisible times;
+            var nodeValue = node.InnerText;
+            if (elementName=="mo")
+            {
+                nodeValue = nodeValue[0].ToString();
+            }
             
-            
-            if (node.Name == elementName && node.InnerText == elementValue)
+            if (node.Name == elementName && nodeValue == elementValue)
             {
                 
                 //Split equation into two parts,
