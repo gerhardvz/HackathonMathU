@@ -82,8 +82,7 @@ public class Element
                 {
                     if (childNode.Name == "math")
                     {
-                        //parse MathML
-                        //TODO Dont use casting
+                        
                         elements.Add(parseMathML(childNode.ChildNodes.Cast<XmlNode>()));
                     }
                 }
@@ -124,7 +123,7 @@ public class Element
             
             if (elm is not null)
             {
-                debugPrint(elm.ToString());
+                // debugPrint(elm.ToString());
                 return elm;
             }
         }
@@ -217,7 +216,7 @@ public class Element
         if (elementList != null)
         {
             debugPrint("SquaredRoot");
-            //TODO Dont use casting
+            
             return new Element("root",false,new [] {parseMathML(elementList.Cast<XmlNode>())});
         }
 
@@ -258,18 +257,20 @@ public class Element
 
     static private Element? checkMultiplication(IEnumerable<XmlNode> mathML)
     {
-        string[] Symbols = new[] {"x", "*","⁢",""};
+        string[] Symbols = new[] {"x", "*","\u2062",""};
         Element[] elementList;
         foreach (var symbol in Symbols)
         {
+            debugPrint("Testing symbol \""+symbol+"\"");
             if ((elementList = SplitOnElementType(mathML, "mo", symbol)) != null)
             {
                 return new Element("x", true, elementList);
             }  
         }
        
-        //gives problem when using msup or mfrac
-        //Todo Check that two censecutive items are of mi or mn
+        //Test for more that one element as with frac it has two row elements which one is the numerator and the other the base.
+        //These should not be multiplied with each other.
+        
         if (mathML.Count()>1)
        foreach (var node in mathML)
         {
@@ -284,17 +285,16 @@ public class Element
                     //Test if right first item == sibling
                     if (right.First()==nextSibling)
                     {
-                        debugPrint("They are sibling");
+                        // debugPrint("They are sibling");
                         return new Element("x", true, new []{parseMathML(left),parseMathML(right)});
                     }
                     //Consecutive Elements
-                    //TODO Dont use casting
+                    
                     return new Element("x", true, new []{parseMathML(node.Cast<XmlNode>()),parseMathML(nextSibling.Cast<XmlNode>())});
                 }
             }
         }
-       
-        //test for consecutive mn and mi entity after each other
+        
         // 2xyz will be ((2) * ((x) * ((y) * (z) ) )
 
 
@@ -314,16 +314,16 @@ public class Element
         //Element can only have 2 child elements in it
         if (nodes != null &&  nodes.Count == 2)
         {
-            debugPrint("Test mfrac");
+            
             var left = nodes[0];
             var right = nodes[1];
-            debugPrint("Meth");
+            
             debugPrint(left.Name);
             debugPrint(right.Name);
             if (left != null || right != null)
             {
                 //Todo Fix Suppressed cast "!"
-                //TODO Dont use casting
+                
                 return new Element("/", true,
                     new[] {parseMathML(left!.Cast<XmlNode>()), parseMathML(right!.Cast<XmlNode>())});
             }
@@ -336,7 +336,7 @@ public class Element
             return new Element("/", false, elementList);
         }
 
-        //TODO:Split on frac
+        
 
         return null;
     }
@@ -375,9 +375,11 @@ public class Element
             if (node.Name == "mrow")
             {
                 debugPrint("Creating Brackets under "+ node.ParentNode.Name );
-                //TODO Dont use casting
+               
                 return parseMathML(node.ChildNodes.Cast<XmlNode>());
             }
+            
+            //TODO: Implement looking for brackets
             // if ((elementList = SplitOnElementType(mathML, "mo", "("))!= null)
             // {
             //    return  new Element("/", true,elementList); 
@@ -402,7 +404,7 @@ public class Element
                 {
                     return null;
                 }
-                debugPrint("Subtracted");
+                
                 return new Element("−", false, elementList);
                 
             } 
@@ -418,7 +420,7 @@ public class Element
         {
             if (node.Name == "semantics")
             {
-                //TODO Dont use casting
+                
                 return parseMathML(node.ChildNodes.Cast<XmlNode>());
             }
         }
@@ -433,9 +435,14 @@ public class Element
         int nodePos = 0;
         foreach (XmlNode node in mathML)
         {
+            //Must Check operators that it only has 1 character inner text - possible problems is "&it" : Invisible times;
+            var nodeValue = node.InnerText;
+            if (elementName=="mo")
+            {
+                nodeValue = nodeValue[0].ToString();
+            }
             
-            
-            if (node.Name == elementName && node.InnerText == elementValue)
+            if (node.Name == elementName && nodeValue == elementValue)
             {
                 
                 //Split equation into two parts,
