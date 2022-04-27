@@ -83,6 +83,7 @@ public class Element
                     if (childNode.Name == "math")
                     {
                         //parse MathML
+                        //TODO Dont use casting
                         elements.Add(parseMathML(childNode.ChildNodes.Cast<XmlNode>()));
                     }
                 }
@@ -162,7 +163,13 @@ public class Element
                 return new Number(String.Concat(first.InnerText,last.InnerText));
             }
         }
-        debugPrint("Oops" + mathML );
+        debugPrint("Oops" + mathML.Count() );
+        
+        debugPrint(mathML.First().Name + " :: " + mathML.First().InnerText);
+        foreach (var node in mathML)
+        {
+            debugPrint(node.Name + " :: " + node.InnerText);
+        }
         throw new ElementExceptions("More that two elements remaining. Something went wrong E101");
     }
 
@@ -210,7 +217,7 @@ public class Element
         if (elementList != null)
         {
             debugPrint("SquaredRoot");
-            
+            //TODO Dont use casting
             return new Element("root",false,new [] {parseMathML(elementList.Cast<XmlNode>())});
         }
 
@@ -251,21 +258,16 @@ public class Element
 
     static private Element? checkMultiplication(IEnumerable<XmlNode> mathML)
     {
+        string[] Symbols = new[] {"x", "*","⁢",""};
         Element[] elementList;
-        if ((elementList = SplitOnElementType(mathML, "mo", "x")) != null)
+        foreach (var symbol in Symbols)
         {
-            return new Element("x", true, elementList);
+            if ((elementList = SplitOnElementType(mathML, "mo", symbol)) != null)
+            {
+                return new Element("x", true, elementList);
+            }  
         }
-        if ((elementList = SplitOnElementType(mathML, "mo", "*")) != null)
-        {
-            return new Element("x", true, elementList);
-        }
-
-        if ((elementList = SplitOnElementType(mathML, "mo", "")) != null)
-        {
-            // test for mo with empty value
-            return new Element("x", true, elementList);
-        }
+       
         //gives problem when using msup or mfrac
         //Todo Check that two censecutive items are of mi or mn
         if (mathML.Count()>1)
@@ -276,6 +278,15 @@ public class Element
                 var nextSibling = node.NextSibling;
                 if (nextSibling != null && (nextSibling.Name=="mi" || nextSibling.Name=="mn"))
                 {
+                    
+                    var left = mathML.Take(1);
+                    var right = mathML.Skip(1);  
+                    //Test if right first item == sibling
+                    if (right.First()==nextSibling)
+                    {
+                        debugPrint("They are sibling");
+                        return new Element("x", true, new []{parseMathML(left),parseMathML(right)});
+                    }
                     //Consecutive Elements
                     //TODO Dont use casting
                     return new Element("x", true, new []{parseMathML(node.Cast<XmlNode>()),parseMathML(nextSibling.Cast<XmlNode>())});
@@ -312,8 +323,9 @@ public class Element
             if (left != null || right != null)
             {
                 //Todo Fix Suppressed cast "!"
+                //TODO Dont use casting
                 return new Element("/", true,
-                    new[] {parseMathML(nodes[0]!.Cast<XmlNode>()), parseMathML(nodes[1]!.Cast<XmlNode>())});
+                    new[] {parseMathML(left!.Cast<XmlNode>()), parseMathML(right!.Cast<XmlNode>())});
             }
 
             throw new ElementExceptions("Empty Fraction Element.");
@@ -363,7 +375,7 @@ public class Element
             if (node.Name == "mrow")
             {
                 debugPrint("Creating Brackets under "+ node.ParentNode.Name );
-                
+                //TODO Dont use casting
                 return parseMathML(node.ChildNodes.Cast<XmlNode>());
             }
             // if ((elementList = SplitOnElementType(mathML, "mo", "("))!= null)
@@ -406,6 +418,7 @@ public class Element
         {
             if (node.Name == "semantics")
             {
+                //TODO Dont use casting
                 return parseMathML(node.ChildNodes.Cast<XmlNode>());
             }
         }
@@ -508,7 +521,15 @@ public class Element
         {
             foreach (var elem in _elements)
             {
-                statement += " " + elem._elements.ToString();
+                if (elem==null)
+                {
+                    debugPrint("Error item is null");
+                }
+                else
+                {
+                    statement += " " + elem.ToString();
+                }
+                
             }  
         }
         
