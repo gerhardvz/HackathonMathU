@@ -1,6 +1,9 @@
 ﻿using System.Net;
+using System.Numerics;
 using System.Xml;
 using System.Xml.Schema;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace MathClasification;
 
@@ -9,7 +12,7 @@ public class Element
     protected Element[] _elements;
     protected Boolean _canSwap;
     protected String _value;
-    protected const bool debug = true;
+    protected const bool debug = false;
 
     protected Element(String value, Boolean swappable, Element[] elements)
     {
@@ -41,19 +44,19 @@ public class Element
         //if element lenght is 0 then the value must be a number
         if (this._elements.Length == 0)
         {
-            Console.WriteLine("Created number/identifier");
+            debugPrint("Created number/identifier");
         }
         //else it is an operator
         else if (this._value.GetType() == new int().GetType())
         {
-            Console.WriteLine("Created Operator");
+            debugPrint("Created Operator");
             //certain operators can swap their elements without changing the output of the equation
             //Identify them here
         }
         debugPrint("Creating"+ this.ToString()   );
     }
 
-    public static Element[] parseMathMLFile(String File)
+    public static Element? parseMathMLFile(String File)
     {
         XmlUrlResolver resolver = new XmlUrlResolver();
         resolver.Credentials = CredentialCache.DefaultCredentials;
@@ -65,8 +68,8 @@ public class Element
         readerSettings.ValidationType = ValidationType.DTD;
         readerSettings.ValidationEventHandler += new ValidationEventHandler(ValidationCallBack);
 
-        List<Element> elements = new List<Element>();
-        using (XmlReader reader = XmlReader.Create("MathTest1.ml", readerSettings))
+        
+        using (XmlReader reader = XmlReader.Create(File, readerSettings))
         {
             while (reader.Read())
             {
@@ -83,14 +86,14 @@ public class Element
                     if (childNode.Name == "math")
                     {
                         
-                        elements.Add(parseMathML(childNode.ChildNodes.Cast<XmlNode>()));
+                        return (parseMathML(childNode.ChildNodes.Cast<XmlNode>()));
                     }
                 }
                 //No more child nodes found with math name
             }
         }
-
-        return elements.ToArray();
+        //No MathML found
+        return null;
     }
 
     private static void ValidationCallBack(object sender, ValidationEventArgs e)
@@ -202,7 +205,7 @@ public class Element
         if (elementList != null)
         {
             
-            return new Element("=", true, elementList);
+            return new Element("equals", true, elementList);
         }
         
         return null;
@@ -217,7 +220,7 @@ public class Element
         {
             debugPrint("SquaredRoot");
             
-            return new Element("root",false,new [] {parseMathML(elementList.Cast<XmlNode>())});
+            return new Element("root",false,new [] {parseMathML(elementList.Cast<XmlNode>()),new Number("2")});
         }
 
         return null;
@@ -247,7 +250,7 @@ public class Element
                 //Add nodes to Enumerables - otherwise if element is casted and was an number operator or identifier it will be thrown as #text
                 
                 //Todo Fix Suppressed cast "!"
-                return new Element("^", true, new[] {parseMathML(left), parseMathML(right)});
+                return new Element("power", true, new[] {parseMathML(left), parseMathML(right)});
             }
 
             throw new ElementExceptions("Empty Fraction Element.");
@@ -264,7 +267,7 @@ public class Element
             debugPrint("Testing symbol \""+symbol+"\"");
             if ((elementList = SplitOnElementType(mathML, "mo", symbol)) != null)
             {
-                return new Element("x", true, elementList);
+                return new Element("multiply", true, elementList);
             }  
         }
        
@@ -286,11 +289,11 @@ public class Element
                     if (right.First()==nextSibling)
                     {
                         // debugPrint("They are sibling");
-                        return new Element("x", true, new []{parseMathML(left),parseMathML(right)});
+                        return new Element("multiply", true, new []{parseMathML(left),parseMathML(right)});
                     }
                     //Consecutive Elements
                     
-                    return new Element("x", true, new []{parseMathML(node.Cast<XmlNode>()),parseMathML(nextSibling.Cast<XmlNode>())});
+                    // return new Element("multiply", true, new []{parseMathML(node.Cast<XmlNode>()),parseMathML(nextSibling.Cast<XmlNode>())});
                 }
             }
         }
@@ -307,25 +310,27 @@ public class Element
 
         if ((elementList = SplitOnElementType(mathML, "mo", "/")) != null)
         {
-            return new Element("/", true, elementList);
+            return new Element("division", true, elementList);
         }
 
         XmlNodeList nodes = SplitOnElementType(mathML, "mfrac");
         //Element can only have 2 child elements in it
         if (nodes != null &&  nodes.Count == 2)
         {
+            var test = nodes.Cast<XmlNode>();
+            var left = test.Take(1);
+            var right = test.Skip(1);
+            // var left = nodes[0];
+            // var right = nodes[1];
             
-            var left = nodes[0];
-            var right = nodes[1];
-            
-            debugPrint(left.Name);
-            debugPrint(right.Name);
+            // debugPrint(left.Name);
+            // debugPrint(right.Name);
             if (left != null || right != null)
             {
                 //Todo Fix Suppressed cast "!"
                 
                 return new Element("/", true,
-                    new[] {parseMathML(left!.Cast<XmlNode>()), parseMathML(right!.Cast<XmlNode>())});
+                    new[] {parseMathML(left), parseMathML(right)});
             }
 
             throw new ElementExceptions("Empty Fraction Element.");
@@ -346,7 +351,7 @@ public class Element
         var elementList = SplitOnElementType(mathML, "mo", "+");
         if (elementList != null)
         {
-            return new Element("+", true, elementList);
+            return new Element("addition", true, elementList);
         }
 
         return null;
@@ -405,7 +410,7 @@ public class Element
                     return null;
                 }
                 
-                return new Element("−", false, elementList);
+                return new Element("subtraction", false, elementList);
                 
             } 
         }
@@ -543,4 +548,247 @@ public class Element
         statement += " }";
         return statement;
     }
+    
+    //Hash math tree only by a single branch
+    public List<Int64> Hash_M3()
+
+    {
+        var HashList = new List<Int64>();
+        if (_elements==null)
+        {
+
+            return HashList;
+        }
+
+        String stringToHash = "";
+        String stringToHashSwappable = "";
+        List<String> stringList = new List<string>();
+
+        if (_elements.Length==2)
+        {
+            //We know each element has only two children
+            stringToHash = _elements[0]._value + this._value + _elements[1]._value;
+            stringList.Add(_elements[0]._value + this._value);
+            stringList.Add(this._value + _elements[1]._value);
+            if (_canSwap)
+            {
+                stringList.Add(_elements[1]._value + this._value);
+                stringList.Add(this._value + _elements[0]._value);            }
+        }
+        else if (_elements.Length==1)
+        {
+            //We know each element has only one children
+            stringList.Add(_elements[0]._value + this._value);
+            
+        }
+
+        foreach (var str in stringList)
+        {
+            var bStringToHash = Encoding.UTF8.GetBytes(str);
+            // byte[] bHash =  MD5.Create().ComputeHash(bStringToHash);
+            byte[] bHash =  SHA256.Create().ComputeHash(bStringToHash);
+            HashList.Add(BitConverter.ToInt64(bHash));
+        }
+        
+        foreach (var element in _elements)
+        {
+            HashList.AddRange(element.Hash_M4());
+        }
+
+        return HashList;
+    }
+    
+//Hash whole tree, both branches
+    public List<Int64> Hash_M4()
+
+    {
+        var HashList = new List<Int64>();
+        if (_elements==null)
+        {
+
+            return HashList;
+        }
+
+        String stringToHash = "";
+        String stringToHashSwappable = "";
+        
+        if (_elements.Length==2)
+        {
+            //We know each element has only two children
+             stringToHash = _elements[0]._value + this._value + _elements[1]._value;
+             if (_canSwap)
+             {
+                 stringToHashSwappable = _elements[1]._value + this._value + _elements[0]._value; 
+             }
+        }
+        else if (_elements.Length==1)
+        {
+            //We know each element has only one children
+             stringToHash = _elements[0]._value + this._value;
+        }
+        var bStringToHash = Encoding.UTF8.GetBytes(stringToHash);
+        // byte[] bHash =  MD5.Create().ComputeHash(bStringToHash);
+        byte[] bHash =  SHA256.Create().ComputeHash(bStringToHash);
+        HashList.Add(BitConverter.ToInt64(bHash));
+        if (_canSwap)
+        {
+            var bStringToHashSwappable = Encoding.UTF8.GetBytes(stringToHashSwappable);
+            bHash =  SHA256.Create().ComputeHash(bStringToHashSwappable);
+            HashList.Add(BitConverter.ToInt64(bHash));
+        }
+        foreach (var element in _elements)
+        {
+            HashList.AddRange(element.Hash_M4());
+        }
+
+        return HashList;
+    }
+    
+    //Compare Math Structure without numbers of identifiers
+    public List<Int64> Hash_M5()
+
+    {
+        var HashList = new List<Int64>();
+        if (_elements==null)
+        {
+
+            return HashList;
+        }
+
+        String stringToHash = "";
+        String stringToHashSwappable = "";
+        int count = 0;
+        if (_elements.Length==2)
+        {
+            
+            //Test if the two elements are of NUmber type - if they are dont add them
+            
+            //We know each element has only two children
+            if (_elements[0].GetType().ToString() != typeof(Number).ToString() )
+            {
+                
+                stringToHash += _elements[0]._value;
+                count++;
+            }
+
+            stringToHash += this._value;
+            
+            if (_elements[1].GetType() != typeof(Number) )
+            {
+                stringToHash += _elements[1]._value;
+                count++;
+            }
+            
+            if (_canSwap)
+            {
+                if (_elements[1].GetType() != typeof(Number) )
+                {
+                    stringToHashSwappable += _elements[1]._value;
+                }
+
+                stringToHashSwappable += this._value;
+                
+                if (_elements[0].GetType() != typeof(Number) )
+                {
+                    stringToHashSwappable += _elements[0]._value;
+                }            
+            }
+
+            
+        }
+        else if (_elements.Length==1)
+        {
+            //We know each element has only one children
+            stringToHash = _elements[0]._value + this._value;
+        }
+        
+        var bStringToHash = Encoding.UTF8.GetBytes(stringToHash);
+        // byte[] bHash =  MD5.Create().ComputeHash(bStringToHash);
+        byte[] bHash =  SHA256.Create().ComputeHash(bStringToHash);
+        
+        if (count>0)
+        {
+            HashList.Add(BitConverter.ToInt64(bHash));
+        }
+        
+        if (_canSwap)
+        {
+            var bStringToHashSwappable = Encoding.UTF8.GetBytes(stringToHashSwappable);
+            bHash =  SHA256.Create().ComputeHash(bStringToHashSwappable);
+            if (count>0)
+            {
+                HashList.Add(BitConverter.ToInt64(bHash));
+            }
+        }
+        foreach (var element in _elements)
+        {
+            HashList.AddRange(element.Hash_M5());
+        }
+
+        return HashList;
+    }
+    private byte[] SumBytes(byte[] a, byte[] b)
+    {
+        Array.Reverse(a);
+        Array.Reverse(b);
+
+        var sum =( new BigInteger(a) + new BigInteger(b)).ToByteArray();
+
+        Array.Reverse(sum);
+        return sum;
+    }
+
+
+    public float Similarity(Element element)
+    {
+        var count = 0;
+        var b = element.Hash_M4();
+        var a = this.Hash_M4();
+        foreach (var hashb in b)
+        {
+
+            var pos = a.IndexOf(hashb);
+            if (pos>=0)
+            {
+                count++;
+            }
+            
+        }
+        var M4Hash_Perc = (float)count / (float)a.Count;
+        Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
+         count = 0;
+         b = element.Hash_M5();
+         a = this.Hash_M5();
+        foreach (var hashb in b)
+        {
+
+            var pos = a.IndexOf(hashb);
+            if (pos>=0)
+            {
+                count++;
+            }
+            
+        }
+        var M5Hash_Perc = (float)count / (float)a.Count;
+        Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
+        
+        count = 0;
+        b = element.Hash_M3();
+        a = this.Hash_M3();
+        foreach (var hashb in b)
+        {
+
+            var pos = a.IndexOf(hashb);
+            if (pos>=0)
+            {
+                count++;
+            }
+            
+        }
+        var M3Hash_Perc = (float)count / (float)a.Count;
+        Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
+        Console.WriteLine(@"M3 perc {0}",M3Hash_Perc*100);
+        return (M4Hash_Perc + M5Hash_Perc) / 2;
+    }
+   
 }

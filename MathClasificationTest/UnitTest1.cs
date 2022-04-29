@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Numerics;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
@@ -76,22 +79,79 @@ public class Tests
     [Test]
     public void ParseFromXMLFile()
     {
+
+        List<Element> elements1 = new List<Element>();
         try
         {
-            var elements = MathClasification.Element.parseMathMLFile("MathTest1.ml");
-            foreach (var element in elements)
+            for (int i = 1; i <= 5; i++)
             {
-                Console.WriteLine(element.ToString());
+                var elm = Element.parseMathMLFile("MathTest" + i + ".ml");
+                if (elm!=null)
+                {
+                    elements1.Add(elm);
+                }
+                
             }
+            
+            
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
             Assert.Fail();
         }
+
+        foreach (var element in elements1)
+        {
+           Console.WriteLine(@"Files are {0}% Similar", elements1[0].Similarity(element)*100);
+           var list = new List<List<Int64>>();
+           list.Add(element.Hash_M3());
+           saveHashArray(list,"3");
+        }
+        
         Assert.Pass();
     }
     private static void ValidationCallBack(object sender, ValidationEventArgs e) {
         Console.WriteLine("Validation Error: {0}", e.Message);
+    }
+    
+
+    private float calcSame(List<Int64> a, List<Int64> b)
+    {
+        var count = 0;
+        foreach (var hashb in b)
+        {
+
+            var pos = a.IndexOf(hashb);
+                if (pos>=0)
+                {
+                    count++;
+                }
+            
+        }
+        Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
+
+        return (float)count / (float)a.Count;
+    }
+
+    
+    
+    private void saveHashArray(List<List<Int64>> lists,string name)
+    {
+        // var hashlist = File.Create("HashList.csv");
+        List<string> lines = new List<string>();
+        foreach (var list in lists)
+        {
+            string sHashList = "";
+            foreach (var hash in list)
+            {
+                
+            sHashList+=hash+",";
+            }
+
+            lines.Add(sHashList);
+        }
+        
+        File.AppendAllLines("HashList"+name+".csv", lines.ToArray());
     }
 }
