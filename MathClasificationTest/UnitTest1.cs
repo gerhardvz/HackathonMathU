@@ -14,7 +14,9 @@ using MathClasification;
 
 
 namespace MathClasificationTest;
-
+///<summary>
+/// This class is used for testing the MathClasification Library
+/// </summary>
 public class Tests
 {
     [SetUp]
@@ -23,6 +25,10 @@ public class Tests
         Element startElement;
     }
 
+    /// <summary>
+    /// ParseFromXMLDocument is a Test Method to read from a predefined file
+    /// named "MathTest1.ml" in the running directory
+    /// </summary>
     [Test]
     public void ParseFromXMLDocument()
     {
@@ -76,6 +82,10 @@ public class Tests
         Assert.Pass();
     }
     
+    /// <summary>
+    /// ParseFromXMLDocument is a Test Method to read from a predefined list of files
+    /// named "MathTestX.ml" where X is the number from 1 to 5 in the running directory
+    /// </summary>
     [Test]
     public void ParseFromXMLFile()
     {
@@ -85,6 +95,7 @@ public class Tests
         {
             for (int i = 1; i <= 5; i++)
             {
+                System.Console.WriteLine("Testing file: "+i);
                 var elm = Element.parseMathMLFile("MathTest" + i + ".ml");
                 if (elm!=null)
                 {
@@ -135,7 +146,11 @@ public class Tests
     }
 
     
-    
+    /// <summary>
+    /// Saves the list of HashArray's to a defined file name
+    /// </summary>
+    /// <param name="lists"> List of HashArray's</param>
+    /// <param name="name"> File Name</param>
     private void saveHashArray(List<List<Int64>> lists,string name)
     {
         // var hashlist = File.Create("HashList.csv");

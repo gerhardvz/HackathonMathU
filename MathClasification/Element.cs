@@ -7,6 +7,10 @@ using System.Text;
 
 namespace MathClasification;
 
+/// <summary>
+/// Element class is used to split a MathML document into a Tree Strucutre
+/// inorder to be able to create a Similarity Index of the MathML document
+/// </summary>
 public class Element
 {
     protected Element[] _elements;
@@ -14,6 +18,14 @@ public class Element
     protected String _value;
     protected const bool debug = false;
 
+    /// <summary>
+    /// Constructor class that takes in 3 parameters to create a new object of the Element type.
+    /// </summary>
+    /// <param name="value"> The value of the node</param>
+    /// <param name="swappable"> True if the elements are swappable</param>
+    /// <param name="elements">Array of Elements that are the branches of this element.</param>
+    /// <exception cref="InvalidValue"></exception>
+    /// <exception cref="InvalidElements"></exception>
     protected Element(String value, Boolean swappable, Element[] elements)
     {
         if (string.IsNullOrEmpty(value))
@@ -32,6 +44,13 @@ public class Element
         debugPrint("Creating "+ value  + ". Elements count = "+(elements!=null?elements.Count():"0"));
     }
 
+    /// <summary>
+    /// onstructor class that takes in 2 parameters to create a new object of the Element type.
+    /// By default the elements are not swappable
+    /// </summary>
+    /// <param name="value">The value of the node</param>
+    /// <param name="elements">Array of Elements that are the branches of this element.</param>
+    /// <exception cref="Exception"></exception>
     protected Element(String value, Element[] elements)
     {
         this._value = value;
@@ -56,6 +75,11 @@ public class Element
         debugPrint("Creating"+ this.ToString()   );
     }
 
+    /// <summary>
+    /// Factory method that returns a new Element that was parsed from a MathML document file
+    /// </summary>
+    /// <param name="File"> Location and name of the MathML document</param>
+    /// <returns> New Element object</returns>
     public static Element? parseMathMLFile(String File)
     {
         XmlUrlResolver resolver = new XmlUrlResolver();
@@ -96,11 +120,23 @@ public class Element
         return null;
     }
 
+    /// <summary>
+    /// Used for parsing xml documents
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
     private static void ValidationCallBack(object sender, ValidationEventArgs e)
     {
         Console.WriteLine("Validation Error: {0}", e.Message);
     }
 
+    /// <summary>
+    /// Public method that takes in an IEnumerable<XmlNode> as source of document and
+    /// parses to create a new Element object from the defined xml nodes
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns> New Element object</returns>
+    /// <exception cref="ElementParseExceptions"></exception>
     public static Element parseMathML(IEnumerable<XmlNode> mathML)
     {
         var mathFunctions = new List<Func<IEnumerable<XmlNode>, Element?>>()
@@ -114,6 +150,7 @@ public class Element
             checkDivision,
             checkMultiplication,
             checkSquarroot,
+            checkRoot,
             checkPower,
             checkNumber
         };
@@ -136,7 +173,12 @@ public class Element
     }
 
 
-    
+    /// <summary>
+    /// Returns if node is a number of identifier. 
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
+    /// <exception cref="ElementExceptions">Returns Element Exception if there is no number or identifier in node list</exception>
     //checkNumber Working
     static private Element checkNumber(IEnumerable<XmlNode> mathML)
     {
@@ -151,6 +193,8 @@ public class Element
                 return new Number(node.InnerText);
             }
             debugPrint(node.Name + " " +node.InnerText);
+            Console.WriteLine(node.Name);
+            Console.WriteLine(node.InnerText);
             throw new ElementExceptions("Not a valid number identifier.");
         }
         if (mathML.Count() == 2)
@@ -175,7 +219,11 @@ public class Element
         throw new ElementExceptions("More that two elements remaining. Something went wrong E101");
     }
 
-    //isContained returns false if the element type is one of the folowing {mi,mo,mn,mtext}
+    /// <summary>
+    /// returns false if the element type is one of the folowing {mi,mo,mn,mtext}
+    /// </summary>
+    /// <param name="element"></param>
+    /// <returns></returns>
     static private bool isContained(XmlNode element)
     {
         string name = element.Name;
@@ -198,6 +246,12 @@ public class Element
         return true;
     }
 
+    /// <summary>
+    /// Finds equals (=) symbol in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
     //checkEquals Working
     static private Element? checkEquals(IEnumerable<XmlNode> mathML)
     {
@@ -212,6 +266,12 @@ public class Element
         ;
     }
 
+    /// <summary>
+    /// Finds Squarroot symbol in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
     static private Element? checkSquarroot(IEnumerable<XmlNode> mathML)
     {
         
@@ -227,6 +287,45 @@ public class Element
         ;
     }
 
+    static private Element? checkRoot(IEnumerable<XmlNode> mathML)
+    {
+        
+        XmlNodeList nodes = SplitOnElementType(mathML, "mroot");
+        //Element can only have 2 child elements in it
+        if (nodes != null &&  nodes.Count == 2)
+        {
+            var test = nodes.Cast<XmlNode>();
+            var left = test.Take(1);
+            var right = test.Skip(1);
+            // var left = nodes[0];
+            // var right = nodes[1];
+            
+            // debugPrint(left.Name);
+            // debugPrint(right.Name);
+            if (left != null || right != null)
+            {
+                //Todo Fix Suppressed cast "!"
+                
+                return new Element("root", true,
+                    new[] {parseMathML(left), parseMathML(right)});
+            }
+
+            throw new ElementExceptions("Empty Fraction Element.");
+        }
+
+       
+        return null;
+        ;
+    }
+
+    
+    /// <summary>
+    /// Finds power symbol in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
+    /// <exception cref="ElementExceptions"></exception>
     static private Element? checkPower(IEnumerable<XmlNode> mathML)
     {
         
@@ -258,6 +357,12 @@ public class Element
         return null;
     }
 
+    /// <summary>
+    /// Finds multiplication (*,x) symbol in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
     static private Element? checkMultiplication(IEnumerable<XmlNode> mathML)
     {
         string[] Symbols = new[] {"x", "*","\u2062",""};
@@ -304,6 +409,13 @@ public class Element
         return null;
     }
 
+    /// <summary>
+    /// Finds division (=) symbol or division node in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
+    /// <exception cref="ElementExceptions"></exception>
     static private Element? checkDivision(IEnumerable<XmlNode> mathML)
     {
         Element[] elementList;
@@ -346,6 +458,12 @@ public class Element
         return null;
     }
 
+    /// <summary>
+    /// Finds addition (+) symbol in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
     static private Element? checkAddition(IEnumerable<XmlNode> mathML)
     {
         var elementList = SplitOnElementType(mathML, "mo", "+");
@@ -357,7 +475,12 @@ public class Element
         return null;
     }
     
-    //checkSymbol Working
+    /// <summary>
+    /// Finds any other symbol in list of XmlNodes. Like plus minus or greater_that (>) symbols
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
     static private Element? checkSymbol(IEnumerable<XmlNode> mathML)
     {
         String[] symbols = new string[] {"±"};
@@ -372,7 +495,12 @@ public class Element
         return null;
     }
 
-    //checkBrackets Working
+    /// <summary>
+    /// Finds all brackets of ny type in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
     static private Element? checkBrackets(IEnumerable<XmlNode> mathML)
     {
         foreach (XmlNode node in mathML)
@@ -394,7 +522,13 @@ public class Element
         return null;
     }
 
-    //checkSubtraction Working
+    /// <summary>
+    /// Finds minus (-) symbol in list of XmlNodes.
+    /// If none found returns null
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <returns></returns>
+    
     static private Element? checkSubtraction(IEnumerable<XmlNode> mathML)
     {
         //Different possible symbols for minus
@@ -418,7 +552,11 @@ public class Element
         return null;
     }
 
-    //walkItem Working
+    /// <summary>
+    /// Iterates through nodes that have a certain meaning liek semantics
+    /// </summary>
+    /// <param name="mathM"></param>
+    /// <returns></returns>
     static private Element? walkItem(IEnumerable<XmlNode> mathM)
     {
         foreach (var node in mathM)
@@ -434,6 +572,14 @@ public class Element
     }
 
     //SplitOnElementType Working
+    /// <summary>
+    /// Takes in a IEnumerable<XmlNode> and splits it at the position of a node
+    /// with the text value of the parameter element value and a node value of elementName
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <param name="elementName"> Defines what the name of the node must be</param>
+    /// <param name="elementValue">Defines what the text value of the node must be</param>
+    /// <returns></returns>
     static private Element[]? SplitOnElementType(IEnumerable<XmlNode> mathML, string elementName, string elementValue)
     {
         
@@ -504,6 +650,12 @@ public class Element
         return null;
     }
 
+    /// <summary>
+    /// Splits IEnumerable<XmlNode> at the position of a node with the same value as the paramenter elementName
+    /// </summary>
+    /// <param name="mathML"></param>
+    /// <param name="elementName"> Name of element where the nodes should be split</param>
+    /// <returns></returns>
     static private XmlNodeList? SplitOnElementType(IEnumerable<XmlNode> mathML, string elementName)
     {
         foreach (XmlNode node in mathML)
@@ -549,7 +701,11 @@ public class Element
         return statement;
     }
     
-    //Hash math tree only by a single branch
+    //Hash math tree only by a single branch - Testing
+    /// <summary>
+    /// Hashes the element and subsequent elements only by value and one node
+    /// </summary>
+    /// <returns></returns>
     public List<Int64> Hash_M3()
 
     {
@@ -599,6 +755,10 @@ public class Element
     }
     
 //Hash whole tree, both branches
+    /// <summary>
+    /// Hashes the element and subsequent elements by node value and element node values
+    /// </summary>
+    /// <returns></returns>
     public List<Int64> Hash_M4()
 
     {
@@ -645,6 +805,11 @@ public class Element
     }
     
     //Compare Math Structure without numbers of identifiers
+    /// <summary>
+    /// Hashes the element and subsequent elements by node value and element node values only
+    /// if the nodes are not of the Number type
+    /// </summary>
+    /// <returns></returns>
     public List<Int64> Hash_M5()
 
     {
@@ -738,7 +903,10 @@ public class Element
         return sum;
     }
 
-
+    /// <summary>
+    /// Compares current node hash value with another Element object's hash 
+    /// </summary>
+    /// <returns></returns>
     public float Similarity(Element element)
     {
         var count = 0;
