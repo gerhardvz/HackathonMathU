@@ -4,6 +4,7 @@ using System.Xml;
 using System.Xml.Schema;
 using System.Security.Cryptography;
 using System.Text;
+using System.IO;
 
 namespace MathClasification;
 
@@ -78,10 +79,39 @@ public class Element
     /// <summary>
     /// Factory method that returns a new Element that was parsed from a MathML document file
     /// </summary>
-    /// <param name="File"> Location and name of the MathML document</param>
+    /// <param name="filename"> Location and name of the MathML document</param>
     /// <returns> New Element object</returns>
-    public static Element? parseMathMLFile(String File)
+    public static Element? parseMathMLFile(String filename)
     {
+        if (!File.Exists(filename))
+        {
+            throw new FileNotFoundException(filename);
+        }
+        
+        try
+
+        {
+            string dtd = "http://www.w3.org/Math/DTD/mathml3/mathml3.dtd";
+            string docHeader = "<!DOCTYPE math \n"+
+            "PUBLIC \"-//W3C//DTD MathML 3.0//EN\" \n"+
+            "\"http://www.w3.org/Math/DTD/mathml3/mathml3.dtd\">\n";
+            if (!File.ReadAllText(filename).Contains(dtd))
+            {
+                Console.Error.WriteLine("No DOCTYPE declared. Adding Default");
+                string currentContent = String.Empty;
+                currentContent = File.ReadAllText(filename);
+                
+                File.WriteAllText(filename, docHeader + currentContent );
+            }
+        }
+       
+        catch (Exception e)
+        {
+            //Cant edit file
+            Console.WriteLine(e);
+            throw;
+        }
+        
         XmlUrlResolver resolver = new XmlUrlResolver();
         resolver.Credentials = CredentialCache.DefaultCredentials;
 
@@ -93,7 +123,7 @@ public class Element
         readerSettings.ValidationEventHandler += new ValidationEventHandler(ValidationCallBack);
 
         
-        using (XmlReader reader = XmlReader.Create(File, readerSettings))
+        using (XmlReader reader = XmlReader.Create(filename, readerSettings))
         {
             while (reader.Read())
             {
@@ -120,6 +150,74 @@ public class Element
         return null;
     }
 
+    
+      public static Element? parseMathMLString(String math)
+    {
+        if (math==String.Empty)
+        {
+            throw new Exception("Empty String!");
+        }
+        
+        try
+
+        {
+            string dtd = "http://www.w3.org/Math/DTD/mathml3/mathml3.dtd";
+            string docHeader = "<!DOCTYPE math \n"+
+            "PUBLIC \"-//W3C//DTD MathML 3.0//EN\" \n"+
+            "\"http://www.w3.org/Math/DTD/mathml3/mathml3.dtd\">\n";
+            if (!math.Contains(dtd))
+            {
+                Console.Error.WriteLine("No DOCTYPE declared. Adding Default");
+                
+                math = docHeader + math;
+            }
+        }
+       
+        catch (Exception e)
+        {
+            //Cant edit file
+            Console.WriteLine(e);
+            throw;
+        }
+        
+        XmlUrlResolver resolver = new XmlUrlResolver();
+        resolver.Credentials = CredentialCache.DefaultCredentials;
+
+        XmlDocument doc = new XmlDocument();
+        XmlReaderSettings readerSettings = new XmlReaderSettings();
+        readerSettings.XmlResolver = resolver;
+        readerSettings.DtdProcessing = DtdProcessing.Parse;
+        readerSettings.ValidationType = ValidationType.DTD;
+        readerSettings.ValidationEventHandler += new ValidationEventHandler(ValidationCallBack);
+
+        TextReader textReader = new StringReader(math);
+        using (XmlReader reader = XmlReader.Create(textReader, readerSettings))
+        {
+            while (reader.Read())
+            {
+                reader.MoveToContent();
+                XmlDocument xmldoc = new XmlDocument();
+                xmldoc.Load(reader);
+                // XmlNode? node = xmldoc.ReadNode(reader);
+                var nodeList = xmldoc.ChildNodes;
+
+
+                //Itterate through child object and read all that are <math>
+                foreach (XmlNode childNode in nodeList)
+                {
+                    if (childNode.Name == "math")
+                    {
+                        
+                        return (parseMathML(childNode.ChildNodes.Cast<XmlNode>()));
+                    }
+                }
+                //No more child nodes found with math name
+            }
+        }
+        //No MathML found
+        return null;
+    }
+    
     /// <summary>
     /// Used for parsing xml documents
     /// </summary>
@@ -923,7 +1021,7 @@ public class Element
             
         }
         var M4Hash_Perc = (float)count / (float)a.Count;
-        Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
+        Console.WriteLine(@"{2}M4_Hash: Amount of Hashes the Same {0}, Total Amount of Hashes {1}",count,a.Count,"\t");
          count = 0;
          b = element.Hash_M5();
          a = this.Hash_M5();
@@ -938,7 +1036,7 @@ public class Element
             
         }
         var M5Hash_Perc = (float)count / (float)a.Count;
-        Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
+        Console.WriteLine(@"{2}M5_Hash: Amount of Hashes the Same {0}, Total Amount of Hashes {1}",count,a.Count,"\t");
         
         count = 0;
         b = element.Hash_M3();
@@ -954,8 +1052,8 @@ public class Element
             
         }
         var M3Hash_Perc = (float)count / (float)a.Count;
-        Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
-        Console.WriteLine(@"M3 perc {0}",M3Hash_Perc*100);
+        // Console.WriteLine(@"Count {0}, amount {1}",count,a.Count);
+        // Console.WriteLine(@"M3 perc {0}",M3Hash_Perc*100);
         return (M4Hash_Perc + M5Hash_Perc) / 2;
     }
    
